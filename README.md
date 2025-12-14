@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://f-image.com" target="_blank">
-    <img src="https://f-image.com/logo.png" width="120" alt="F-Image Logo">
+    <img src="logo.png" width="120" alt="F-Image Logo">
   </a>
 </p>
 
