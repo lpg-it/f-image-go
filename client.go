@@ -21,7 +21,7 @@ const (
 	DefaultTimeout = 30 * time.Second
 
 	// Version is the current SDK version.
-	Version = "1.0.2"
+	Version = "1.0.3"
 )
 
 // Client is the F-Image API client.
@@ -189,6 +189,13 @@ func (c *Client) uploadMultipart(ctx context.Context, path string, reader io.Rea
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
 
+	// Add fields before the file so streaming servers can inspect metadata first.
+	for key, value := range fields {
+		if err := writer.WriteField(key, value); err != nil {
+			return nil, fmt.Errorf("failed to write field %s: %w", key, err)
+		}
+	}
+
 	// Add file field
 	part, err := writer.CreateFormFile("file", filename)
 	if err != nil {
@@ -196,13 +203,6 @@ func (c *Client) uploadMultipart(ctx context.Context, path string, reader io.Rea
 	}
 	if _, err := io.Copy(part, reader); err != nil {
 		return nil, fmt.Errorf("failed to copy file data: %w", err)
-	}
-
-	// Add other fields
-	for key, value := range fields {
-		if err := writer.WriteField(key, value); err != nil {
-			return nil, fmt.Errorf("failed to write field %s: %w", key, err)
-		}
 	}
 
 	// Close writer

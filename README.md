@@ -113,7 +113,7 @@ client := fimage.NewClient("your-api-token",
 )
 ```
 
-`client.Logos.Get` uses the lightweight internal metadata endpoint when available, and automatically falls back to the older single-logo endpoint on servers that have not deployed `/api/logos/:domain/exists` yet.
+`client.Logos.Get` uses the lightweight internal metadata endpoint and returns the final public R2 URL without proxying image bytes through your application server.
 
 ---
 
@@ -153,6 +153,14 @@ logoResp, err := client.Files.Upload(ctx, logoFile, &fimage.UploadOptions{
 fmt.Println(logoResp.Data.URL)      // https://i.f-image.com/logos/marriott.com
 fmt.Println(logoResp.Data.MimeType) // image/png
 
+// Skip the upload entirely when a logo already exists, otherwise upload it.
+logoFile, _ = os.Open("marriott-logo.webp")
+logo, err := client.Files.UploadLogoOrGetURL(ctx, logoFile, &fimage.UploadOptions{
+    Filename: "marriott-logo.webp",
+    Domain:   "marriott.com",
+})
+fmt.Println(logo.URL) // https://i.f-image.com/logos/marriott.com
+
 // Upload from URL
 resp, err := client.Files.UploadFromURL(ctx, "https://example.com/image.jpg")
 ```
@@ -160,6 +168,8 @@ resp, err := client.Files.UploadFromURL(ctx, "https://example.com/image.jpg")
 Logo uploads are stored outside the normal gallery flow, always normalized to PNG content, and mapped to a fixed path: `logos/<domain>`. `Domain` is required for logo uploads; the SDK does not infer it from the file name or source URL.
 
 If a logo already exists for the domain and `ForceUpdate` is `false`, the API returns `409 Conflict`. In the SDK, `*fimage.APIError` includes the existing `URL`, `Domain`, and `ForceUpdateRequired` fields.
+
+When uploading logos, the SDK sends logo metadata in the request URL so the server can reject existing domains before reading and processing the file body.
 
 ### 🏷️ Logos API
 
@@ -182,6 +192,8 @@ fmt.Println(logo.URL) // https://i.f-image.com/logos/marriott.com
 ```
 
 `Get` accepts plain domains or URL-like input. The SDK normalizes the input to a domain for lookup, and if the logo does not exist it returns a `Logo` result with an empty `URL` instead of an error.
+
+For the common "create if missing, otherwise reuse" workflow, use `client.Files.UploadLogoOrGetURL(...)`. It checks metadata first and only sends the file upload when the logo is missing or `ForceUpdate` is `true`.
 
 #### List Files
 
@@ -602,7 +614,7 @@ go run examples/upload/main.go
 | `WithBaseURL(url)` | Set custom API base URL | `https://f-image.com` |
 | `WithTimeout(duration)` | Set HTTP client timeout | `30s` |
 | `WithHTTPClient(client)` | Use custom HTTP client | Default client |
-| `WithUserAgent(ua)` | Set custom User-Agent header | `f-image-go/1.0.2` |
+| `WithUserAgent(ua)` | Set custom User-Agent header | `f-image-go/1.0.3` |
 
 ---
 

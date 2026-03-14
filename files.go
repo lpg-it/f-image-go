@@ -3,6 +3,7 @@ package fimage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -77,6 +78,7 @@ func (s *FilesService) Upload(ctx context.Context, reader io.Reader, opts *Uploa
 		filename = "image.jpg"
 	}
 
+	path := "/api/files/upload"
 	fields := make(map[string]string)
 	uploadType := opts.Type
 	if uploadType == "" {
@@ -97,16 +99,20 @@ func (s *FilesService) Upload(ctx context.Context, reader io.Reader, opts *Uploa
 		if domain == "" {
 			return nil, fmt.Errorf("domain is required for logo uploads")
 		}
-		fields["type"] = string(uploadType)
-		fields["domain"] = domain
+		query := url.Values{}
+		query.Set("type", string(uploadType))
+		query.Set("domain", domain)
 		if opts.ForceUpdate {
-			fields["force_update"] = "true"
+			query.Set("force_update", "true")
 		}
+		path = path + "?" + query.Encode()
 	} else if opts.SingleFileOnly {
-		fields["single_file_only"] = "true"
+		query := url.Values{}
+		query.Set("single_file_only", "true")
+		path = path + "?" + query.Encode()
 	}
 
-	respBody, err := s.client.uploadMultipart(ctx, "/api/files/upload", reader, filename, fields)
+	respBody, err := s.client.uploadMultipart(ctx, path, reader, filename, fields)
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +123,73 @@ func (s *FilesService) Upload(ctx context.Context, reader io.Reader, opts *Uploa
 	}
 
 	return &resp, nil
+}
+
+// UploadLogoOrGetURL resolves an existing logo first and only uploads when needed.
+//
+// The returned Logo always includes the normalized domain. If a logo already
+// exists, the upload is skipped and the existing public URL is returned.
+func (s *FilesService) UploadLogoOrGetURL(ctx context.Context, reader io.Reader, opts *UploadOptions) (*Logo, error) {
+	if opts == nil {
+		opts = &UploadOptions{}
+	}
+
+	domain := strings.TrimSpace(opts.Domain)
+	if domain == "" {
+		return nil, fmt.Errorf("domain is required for logo uploads")
+	}
+
+	if opts.Type != "" && opts.Type != UploadTypeLogo {
+		return nil, fmt.Errorf("upload type must be %q", UploadTypeLogo)
+	}
+
+	if !opts.ForceUpdate {
+		logo, err := s.client.Logos.Get(ctx, domain)
+		if err != nil {
+			return nil, err
+		}
+		if logo.URL != "" {
+			return logo, nil
+		}
+	}
+
+	if reader == nil {
+		return nil, fmt.Errorf("reader is required when uploading a new logo")
+	}
+
+	uploadOpts := *opts
+	uploadOpts.Type = UploadTypeLogo
+
+	resp, err := s.Upload(ctx, reader, &uploadOpts)
+	if err != nil {
+		var apiErr *APIError
+		if !uploadOpts.ForceUpdate && errors.As(err, &apiErr) && IsConflict(err) && apiErr.URL != "" {
+			domain := normalizeLogoLookupDomain(uploadOpts.Domain)
+			if apiErr.Domain != "" {
+				domain = apiErr.Domain
+			}
+			return &Logo{
+				Domain: domain,
+				URL:    apiErr.URL,
+			}, nil
+		}
+
+		return nil, err
+	}
+	if resp.Data == nil {
+		return nil, fmt.Errorf("upload response missing data")
+	}
+
+	logo := &Logo{
+		Domain: normalizeLogoLookupDomain(uploadOpts.Domain),
+		URL:    resp.Data.URL,
+	}
+	logo.ID = resp.Data.ID
+	if resp.Data.Domain != "" {
+		logo.Domain = resp.Data.Domain
+	}
+
+	return logo, nil
 }
 
 // UploadFromURLOptions contains options for uploading from a URL.

@@ -64,94 +64,21 @@ func TestLogosGetReturnsEmptyURLWhenMissing(t *testing.T) {
 	}
 }
 
-func TestLogosGetFallsBackToLegacyEndpoint(t *testing.T) {
+func TestLogosGetReturnsErrorWhenExistsRouteMissing(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		switch r.URL.Path {
-		case "/api/logos/example.com/exists":
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(`{"error":"Not Found"}`))
-		case "/api/logos/example.com":
-			_, _ = w.Write([]byte(`{"id":7,"domain":"example.com","url":"https://i.f-image.com/logos/example.com"}`))
-		default:
+		if r.URL.Path != "/api/logos/example.com/exists" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
-	}))
-	defer server.Close()
-
-	client := NewClient("test-token", WithBaseURL(server.URL), WithHTTPClient(server.Client()))
-
-	logo, err := client.Logos.Get(context.Background(), "example.com")
-	if err != nil {
-		t.Fatalf("Get returned error: %v", err)
-	}
-	if logo.Domain != "example.com" {
-		t.Fatalf("unexpected domain: %s", logo.Domain)
-	}
-	if logo.URL != "https://i.f-image.com/logos/example.com" {
-		t.Fatalf("unexpected url: %s", logo.URL)
-	}
-	if logo.ID != 7 {
-		t.Fatalf("unexpected id: %d", logo.ID)
-	}
-}
-
-func TestLogosGetReturnsEmptyURLWhenLegacyEndpointMisses(t *testing.T) {
-	t.Parallel()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		switch r.URL.Path {
-		case "/api/logos/example.com/exists":
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(`{"error":"Not Found"}`))
-		case "/api/logos/example.com":
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(`{"error":"Logo not found"}`))
-		default:
-			t.Fatalf("unexpected path: %s", r.URL.Path)
-		}
-	}))
-	defer server.Close()
-
-	client := NewClient("test-token", WithBaseURL(server.URL), WithHTTPClient(server.Client()))
-
-	logo, err := client.Logos.Get(context.Background(), "example.com")
-	if err != nil {
-		t.Fatalf("Get returned error: %v", err)
-	}
-	if logo.Domain != "example.com" {
-		t.Fatalf("unexpected domain: %s", logo.Domain)
-	}
-	if logo.URL != "" {
-		t.Fatalf("expected empty url, got: %s", logo.URL)
-	}
-}
-
-func TestLogosGetReturnsErrorWhenLegacyRouteIsMissing(t *testing.T) {
-	t.Parallel()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/logos/example.com/exists":
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte("404 page not found"))
-		case "/api/logos/example.com":
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte("404 page not found"))
-		default:
-			t.Fatalf("unexpected path: %s", r.URL.Path)
-		}
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"Not Found"}`))
 	}))
 	defer server.Close()
 
 	client := NewClient("test-token", WithBaseURL(server.URL), WithHTTPClient(server.Client()))
 
 	if _, err := client.Logos.Get(context.Background(), "example.com"); err == nil {
-		t.Fatal("expected error when legacy route is missing")
+		t.Fatal("expected error when exists route is missing")
 	}
 }

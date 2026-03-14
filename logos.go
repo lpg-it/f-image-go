@@ -2,7 +2,6 @@ package fimage
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -24,19 +23,7 @@ func (s *LogosService) Get(ctx context.Context, domain string) (*Logo, error) {
 		return nil, fmt.Errorf("domain is required")
 	}
 
-	logo, err := s.getViaExistsEndpoint(ctx, normalizedDomain)
-	if err == nil {
-		return logo, nil
-	}
-	if !IsNotFound(err) {
-		return nil, err
-	}
-
-	return s.getViaLegacyEndpoint(ctx, normalizedDomain)
-}
-
-func (s *LogosService) getViaExistsEndpoint(ctx context.Context, domain string) (*Logo, error) {
-	path := fmt.Sprintf("/api/logos/%s/exists", url.PathEscape(domain))
+	path := fmt.Sprintf("/api/logos/%s/exists", url.PathEscape(normalizedDomain))
 
 	var resp struct {
 		Exists bool   `json:"exists"`
@@ -50,7 +37,7 @@ func (s *LogosService) getViaExistsEndpoint(ctx context.Context, domain string) 
 
 	logo := &Logo{
 		ID:     resp.ID,
-		Domain: domain,
+		Domain: normalizedDomain,
 		URL:    resp.URL,
 	}
 	if resp.Domain != "" {
@@ -62,38 +49,6 @@ func (s *LogosService) getViaExistsEndpoint(ctx context.Context, domain string) 
 	}
 
 	return logo, nil
-}
-
-func (s *LogosService) getViaLegacyEndpoint(ctx context.Context, domain string) (*Logo, error) {
-	path := fmt.Sprintf("/api/logos/%s", url.PathEscape(domain))
-
-	var logo Logo
-	if err := s.client.request(ctx, http.MethodGet, path, nil, &logo); err != nil {
-		if IsNotFound(err) {
-			if isRouteNotFound(err) {
-				return nil, err
-			}
-			return &Logo{Domain: domain}, nil
-		}
-		return nil, err
-	}
-
-	if logo.Domain == "" {
-		logo.Domain = domain
-	}
-
-	return &logo, nil
-}
-
-func isRouteNotFound(err error) bool {
-	var apiErr *APIError
-	if !errors.As(err, &apiErr) {
-		return false
-	}
-
-	message := strings.TrimSpace(strings.ToLower(apiErr.Message))
-
-	return message == "404 page not found" || message == strings.ToLower(http.StatusText(http.StatusNotFound))
 }
 
 func normalizeLogoLookupDomain(domain string) string {

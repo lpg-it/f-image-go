@@ -57,6 +57,12 @@ func main() {
 	if err := uploadLogo(ctx, client); err != nil {
 		log.Printf("Error: %v\n", err)
 	}
+
+	// Example 5: Upload a logo only when missing
+	fmt.Println("\n=== Example 5: Upload logo or reuse existing URL ===")
+	if err := uploadLogoOrGetURL(ctx, client); err != nil {
+		log.Printf("Error: %v\n", err)
+	}
 }
 
 // uploadFromFile demonstrates uploading a file from disk.
@@ -164,6 +170,33 @@ func uploadLogo(ctx context.Context, client *fimage.Client) error {
 	fmt.Printf("  Upload Type: %s\n", resp.Data.UploadType)
 	fmt.Printf("  Domain: %s\n", resp.Data.Domain)
 	fmt.Printf("  MIME Type: %s\n", resp.Data.MimeType)
+
+	return nil
+}
+
+// uploadLogoOrGetURL demonstrates the "reuse existing, otherwise upload" flow.
+func uploadLogoOrGetURL(ctx context.Context, client *fimage.Client) error {
+	file, err := os.Open("example-logo.png")
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("Skipping upload-or-get example: example-logo.png not found")
+			return nil
+		}
+		return fmt.Errorf("failed to open logo file: %w", err)
+	}
+	defer file.Close()
+
+	logo, err := client.Files.UploadLogoOrGetURL(ctx, file, &fimage.UploadOptions{
+		Filename: "example-logo.png",
+		Domain:   "example.com",
+	})
+	if err != nil {
+		return fmt.Errorf("upload or get logo failed: %w", err)
+	}
+
+	fmt.Printf("Upload-or-get successful!\n")
+	fmt.Printf("  Domain: %s\n", logo.Domain)
+	fmt.Printf("  URL: %s\n", logo.URL)
 
 	return nil
 }
