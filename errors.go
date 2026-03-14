@@ -19,6 +19,9 @@ var (
 	// ErrForbidden is returned when access to a resource is forbidden.
 	ErrForbidden = errors.New("forbidden: access denied")
 
+	// ErrConflict is returned when the request conflicts with existing state.
+	ErrConflict = errors.New("conflict: resource already exists or cannot be replaced")
+
 	// ErrQuotaExceeded is returned when storage quota is exceeded.
 	ErrQuotaExceeded = errors.New("quota exceeded: storage limit reached")
 
@@ -36,6 +39,21 @@ type APIError struct {
 
 	// Message is the error message from the API.
 	Message string
+
+	// URL is an existing resource URL returned by the API when relevant.
+	URL string
+
+	// UploadType indicates the upload flow related to the error.
+	UploadType UploadType
+
+	// Domain is set for domain-scoped logo conflicts.
+	Domain string
+
+	// Exists indicates the resource already exists.
+	Exists bool
+
+	// ForceUpdateRequired indicates the caller must opt-in to overwrite the resource.
+	ForceUpdateRequired bool
 }
 
 // Error implements the error interface.
@@ -77,6 +95,15 @@ func IsBadRequest(err error) bool {
 		return apiErr.StatusCode == 400
 	}
 	return errors.Is(err, ErrBadRequest)
+}
+
+// IsConflict returns true if the error is a conflict error.
+func IsConflict(err error) bool {
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.StatusCode == 409
+	}
+	return errors.Is(err, ErrConflict)
 }
 
 // IsQuotaExceeded returns true if the error is a quota exceeded error.

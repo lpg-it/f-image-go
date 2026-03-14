@@ -8,12 +8,24 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 // FilesService handles file operations.
 type FilesService struct {
 	client *Client
 }
+
+// UploadType describes which upload flow the server should use.
+type UploadType string
+
+const (
+	// UploadTypeImage uses the normal gallery image flow.
+	UploadTypeImage UploadType = "image"
+
+	// UploadTypeLogo stores a single logo at logos/<domain> without gallery variants.
+	UploadTypeLogo UploadType = "logo"
+)
 
 // UploadOptions contains options for uploading a file.
 type UploadOptions struct {
@@ -26,6 +38,18 @@ type UploadOptions struct {
 
 	// AlbumID is the optional album to add the file to.
 	AlbumID *int64
+
+	// Type selects the upload behavior. Defaults to image.
+	Type UploadType
+
+	// Domain is required when Type is UploadTypeLogo.
+	Domain string
+
+	// ForceUpdate overwrites an existing domain logo when Type is UploadTypeLogo.
+	ForceUpdate bool
+
+	// SingleFileOnly skips medium and thumbnail generation for normal image uploads.
+	SingleFileOnly bool
 }
 
 // Upload uploads an image file.
@@ -54,8 +78,32 @@ func (s *FilesService) Upload(ctx context.Context, reader io.Reader, opts *Uploa
 	}
 
 	fields := make(map[string]string)
+	uploadType := opts.Type
+	if uploadType == "" {
+		uploadType = UploadTypeImage
+	}
+
+	switch uploadType {
+	case UploadTypeImage, UploadTypeLogo:
+	default:
+		return nil, fmt.Errorf("unsupported upload type: %s", uploadType)
+	}
+
 	if opts.Description != "" {
 		fields["description"] = opts.Description
+	}
+	if uploadType == UploadTypeLogo {
+		domain := strings.TrimSpace(opts.Domain)
+		if domain == "" {
+			return nil, fmt.Errorf("domain is required for logo uploads")
+		}
+		fields["type"] = string(uploadType)
+		fields["domain"] = domain
+		if opts.ForceUpdate {
+			fields["force_update"] = "true"
+		}
+	} else if opts.SingleFileOnly {
+		fields["single_file_only"] = "true"
 	}
 
 	respBody, err := s.client.uploadMultipart(ctx, "/api/files/upload", reader, filename, fields)

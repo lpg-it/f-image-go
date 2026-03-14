@@ -131,9 +131,33 @@ resp, err := client.Files.Upload(ctx, file, &fimage.UploadOptions{
 fmt.Println(resp.Data.URL)    // https://i.f-image.com/images/abc123.jpg
 fmt.Println(resp.Data.IsFlash) // true if deduplicated
 
+// Upload only the original file without medium/thumbnail variants
+singleFile, _ := os.Open("photo.jpg")
+singleResp, err := client.Files.Upload(ctx, singleFile, &fimage.UploadOptions{
+    Filename:       "photo.jpg",
+    SingleFileOnly: true,
+})
+fmt.Println(singleResp.Data.URL)
+fmt.Println(singleResp.Data.ThumbnailURL == nil) // true
+
+// Upload a domain logo to https://i.f-image.com/logos/marriott.com
+logoFile, _ := os.Open("marriott-logo.webp")
+logoResp, err := client.Files.Upload(ctx, logoFile, &fimage.UploadOptions{
+    Filename:    "marriott-logo.webp",
+    Type:        fimage.UploadTypeLogo,
+    Domain:      "marriott.com",
+    ForceUpdate: false,
+})
+fmt.Println(logoResp.Data.URL)      // https://i.f-image.com/logos/marriott.com
+fmt.Println(logoResp.Data.MimeType) // image/png
+
 // Upload from URL
 resp, err := client.Files.UploadFromURL(ctx, "https://example.com/image.jpg")
 ```
+
+Logo uploads are stored outside the normal gallery flow, always normalized to PNG content, and mapped to a fixed path: `logos/<domain>`. `Domain` is required for logo uploads; the SDK does not infer it from the file name or source URL.
+
+If a logo already exists for the domain and `ForceUpdate` is `false`, the API returns `409 Conflict`. In the SDK, `*fimage.APIError` includes the existing `URL`, `Domain`, and `ForceUpdateRequired` fields.
 
 #### List Files
 
@@ -454,6 +478,8 @@ type UploadData struct {
     Height       int     `json:"height"`
     MimeType     string  `json:"mime_type"`
     IsFlash      bool    `json:"is_flash"`
+    UploadType   UploadType `json:"upload_type,omitempty"`
+    Domain       string  `json:"domain,omitempty"`
 }
 ```
 
@@ -551,7 +577,7 @@ go run examples/upload/main.go
 | `WithBaseURL(url)` | Set custom API base URL | `https://f-image.com` |
 | `WithTimeout(duration)` | Set HTTP client timeout | `30s` |
 | `WithHTTPClient(client)` | Use custom HTTP client | Default client |
-| `WithUserAgent(ua)` | Set custom User-Agent header | `f-image-go/1.0.0` |
+| `WithUserAgent(ua)` | Set custom User-Agent header | `f-image-go/1.0.1` |
 
 ---
 

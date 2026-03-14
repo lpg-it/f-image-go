@@ -21,7 +21,7 @@ const (
 	DefaultTimeout = 30 * time.Second
 
 	// Version is the current SDK version.
-	Version = "1.0.0"
+	Version = "1.0.1"
 )
 
 // Client is the F-Image API client.
@@ -247,8 +247,13 @@ func (c *Client) uploadMultipart(ctx context.Context, path string, reader io.Rea
 // parseAPIError parses an API error response.
 func parseAPIError(statusCode int, body []byte) error {
 	var errResp struct {
-		Error   string `json:"error"`
-		Message string `json:"message"`
+		Error               string     `json:"error"`
+		Message             string     `json:"message"`
+		URL                 string     `json:"url"`
+		UploadType          UploadType `json:"upload_type"`
+		Domain              string     `json:"domain"`
+		Exists              bool       `json:"exists"`
+		ForceUpdateRequired bool       `json:"force_update_required"`
 	}
 
 	if err := json.Unmarshal(body, &errResp); err != nil {
@@ -267,7 +272,12 @@ func parseAPIError(statusCode int, body []byte) error {
 	}
 
 	return &APIError{
-		StatusCode: statusCode,
-		Message:    msg,
+		StatusCode:          statusCode,
+		Message:             msg,
+		URL:                 errResp.URL,
+		UploadType:          errResp.UploadType,
+		Domain:              errResp.Domain,
+		Exists:              errResp.Exists,
+		ForceUpdateRequired: errResp.ForceUpdateRequired,
 	}
 }

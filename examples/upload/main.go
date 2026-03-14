@@ -51,6 +51,12 @@ func main() {
 	if err := uploadFromURL(ctx, client); err != nil {
 		log.Printf("Error: %v\n", err)
 	}
+
+	// Example 4: Upload a domain logo
+	fmt.Println("\n=== Example 4: Upload logo ===")
+	if err := uploadLogo(ctx, client); err != nil {
+		log.Printf("Error: %v\n", err)
+	}
 }
 
 // uploadFromFile demonstrates uploading a file from disk.
@@ -126,6 +132,38 @@ func uploadFromURL(ctx context.Context, client *fimage.Client) error {
 	fmt.Printf("  URL: %s\n", resp.Data.URL)
 	fmt.Printf("  Original Name: %s\n", resp.Data.OriginalName)
 	fmt.Printf("  Dimensions: %dx%d\n", resp.Data.Width, resp.Data.Height)
+
+	return nil
+}
+
+// uploadLogo demonstrates uploading a domain-scoped logo.
+func uploadLogo(ctx context.Context, client *fimage.Client) error {
+	file, err := os.Open("example-logo.png")
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("Skipping logo example: example-logo.png not found")
+			return nil
+		}
+		return fmt.Errorf("failed to open logo file: %w", err)
+	}
+	defer file.Close()
+
+	resp, err := client.Files.Upload(ctx, file, &fimage.UploadOptions{
+		Filename:    "example-logo.png",
+		Type:        fimage.UploadTypeLogo,
+		Domain:      "example.com",
+		ForceUpdate: false,
+	})
+	if err != nil {
+		return fmt.Errorf("logo upload failed: %w", err)
+	}
+
+	fmt.Printf("Logo upload successful!\n")
+	fmt.Printf("  ID: %d\n", resp.Data.ID)
+	fmt.Printf("  URL: %s\n", resp.Data.URL)
+	fmt.Printf("  Upload Type: %s\n", resp.Data.UploadType)
+	fmt.Printf("  Domain: %s\n", resp.Data.Domain)
+	fmt.Printf("  MIME Type: %s\n", resp.Data.MimeType)
 
 	return nil
 }

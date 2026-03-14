@@ -48,6 +48,12 @@ type UploadData struct {
 
 	// IsFlash indicates if this was a flash upload (deduplicated).
 	IsFlash bool `json:"is_flash"`
+
+	// UploadType is the server-side upload flow used for this object.
+	UploadType UploadType `json:"upload_type,omitempty"`
+
+	// Domain is set for logo uploads.
+	Domain string `json:"domain,omitempty"`
 }
 
 // File represents a file in the user's library.
