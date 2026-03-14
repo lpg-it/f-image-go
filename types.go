@@ -56,6 +56,18 @@ type UploadData struct {
 	Domain string `json:"domain,omitempty"`
 }
 
+// Logo represents a domain-scoped logo lookup result.
+type Logo struct {
+	// ID is the unique identifier of the logo asset when present.
+	ID int64 `json:"id,omitempty"`
+
+	// Domain is the normalized domain associated with the logo.
+	Domain string `json:"domain"`
+
+	// URL is the public R2 URL for the logo. It is empty when the logo does not exist.
+	URL string `json:"url,omitempty"`
+}
+
 // File represents a file in the user's library.
 type File struct {
 	// ID is the unique identifier of the file.

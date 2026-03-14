@@ -113,6 +113,8 @@ client := fimage.NewClient("your-api-token",
 )
 ```
 
+`client.Logos.Get` uses the lightweight internal metadata endpoint when available, and automatically falls back to the older single-logo endpoint on servers that have not deployed `/api/logos/:domain/exists` yet.
+
 ---
 
 ### 📤 Files API
@@ -158,6 +160,28 @@ resp, err := client.Files.UploadFromURL(ctx, "https://example.com/image.jpg")
 Logo uploads are stored outside the normal gallery flow, always normalized to PNG content, and mapped to a fixed path: `logos/<domain>`. `Domain` is required for logo uploads; the SDK does not infer it from the file name or source URL.
 
 If a logo already exists for the domain and `ForceUpdate` is `false`, the API returns `409 Conflict`. In the SDK, `*fimage.APIError` includes the existing `URL`, `Domain`, and `ForceUpdateRequired` fields.
+
+### 🏷️ Logos API
+
+Resolve whether a domain logo exists without routing image bytes through your application server. The API only returns metadata and the final public R2 URL.
+
+```go
+logo, err := client.Logos.Get(ctx, "https://www.marriott.com/path?x=1")
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Println(logo.Domain) // marriott.com
+
+if logo.URL == "" {
+    fmt.Println("Logo not found")
+    return
+}
+
+fmt.Println(logo.URL) // https://i.f-image.com/logos/marriott.com
+```
+
+`Get` accepts plain domains or URL-like input. The SDK normalizes the input to a domain for lookup, and if the logo does not exist it returns a `Logo` result with an empty `URL` instead of an error.
 
 #### List Files
 
@@ -555,6 +579,7 @@ The `examples/` directory contains complete, runnable examples:
 | Example | Description |
 |---------|-------------|
 | [upload](examples/upload) | Upload images from file, bytes, or URL |
+| [logos](examples/logos) | Resolve a domain logo to its public R2 URL |
 | [files](examples/files) | List, search, delete, and move files |
 | [albums](examples/albums) | Album CRUD operations |
 | [share](examples/share) | Create and manage share links |
@@ -577,7 +602,7 @@ go run examples/upload/main.go
 | `WithBaseURL(url)` | Set custom API base URL | `https://f-image.com` |
 | `WithTimeout(duration)` | Set HTTP client timeout | `30s` |
 | `WithHTTPClient(client)` | Use custom HTTP client | Default client |
-| `WithUserAgent(ua)` | Set custom User-Agent header | `f-image-go/1.0.1` |
+| `WithUserAgent(ua)` | Set custom User-Agent header | `f-image-go/1.0.2` |
 
 ---
 

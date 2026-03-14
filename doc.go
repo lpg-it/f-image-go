@@ -24,6 +24,7 @@
 // # Available Services
 //
 //   - Files: Upload, list, search, and manage images
+//   - Logos: Resolve domain logos to their public R2 URLs
 //   - Albums: Organize images into albums
 //   - Share: Create and manage share links
 //   - Tags: Tag and categorize images

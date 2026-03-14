@@ -21,7 +21,7 @@ const (
 	DefaultTimeout = 30 * time.Second
 
 	// Version is the current SDK version.
-	Version = "1.0.1"
+	Version = "1.0.2"
 )
 
 // Client is the F-Image API client.
@@ -40,6 +40,7 @@ type Client struct {
 
 	// Services
 	Files  *FilesService
+	Logos  *LogosService
 	Albums *AlbumsService
 	Share  *ShareService
 	Tags   *TagsService
@@ -108,6 +109,7 @@ func NewClient(apiToken string, opts ...ClientOption) *Client {
 
 	// Initialize services
 	c.Files = &FilesService{client: c}
+	c.Logos = &LogosService{client: c}
 	c.Albums = &AlbumsService{client: c}
 	c.Share = &ShareService{client: c}
 	c.Tags = &TagsService{client: c}
