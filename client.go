@@ -21,7 +21,7 @@ const (
 	DefaultTimeout = 30 * time.Second
 
 	// Version is the current SDK version.
-	Version = "1.0.3"
+	Version = "1.0.4"
 )
 
 // Client is the F-Image API client.

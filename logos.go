@@ -39,6 +39,7 @@ func (s *LogosService) Get(ctx context.Context, domain string) (*Logo, error) {
 		ID:     resp.ID,
 		Domain: normalizedDomain,
 		URL:    resp.URL,
+		Exists: resp.Exists,
 	}
 	if resp.Domain != "" {
 		logo.Domain = resp.Domain
@@ -46,6 +47,53 @@ func (s *LogosService) Get(ctx context.Context, domain string) (*Logo, error) {
 	if !resp.Exists {
 		logo.ID = 0
 		logo.URL = ""
+		logo.Exists = false
+	}
+
+	return logo, nil
+}
+
+// Resolve returns a stored logo or fetches and saves one for the domain.
+//
+// The input may be a bare domain or a URL. If no logo can be found, the
+// returned Logo has an empty URL and Exists=false instead of an error.
+func (s *LogosService) Resolve(ctx context.Context, domain string) (*Logo, error) {
+	normalizedDomain := normalizeLogoLookupDomain(domain)
+	if normalizedDomain == "" {
+		return nil, fmt.Errorf("domain is required")
+	}
+
+	var resp struct {
+		Exists   bool   `json:"exists"`
+		Domain   string `json:"domain"`
+		URL      string `json:"url"`
+		ID       int64  `json:"id"`
+		Source   string `json:"source"`
+		Provider string `json:"provider"`
+	}
+	if err := s.client.request(ctx, http.MethodPost, "/api/logos/resolve", map[string]string{
+		"domain": domain,
+	}, &resp); err != nil {
+		return nil, err
+	}
+
+	logo := &Logo{
+		ID:       resp.ID,
+		Domain:   normalizedDomain,
+		URL:      resp.URL,
+		Exists:   resp.Exists,
+		Source:   resp.Source,
+		Provider: resp.Provider,
+	}
+	if resp.Domain != "" {
+		logo.Domain = resp.Domain
+	}
+	if !resp.Exists {
+		logo.ID = 0
+		logo.URL = ""
+		logo.Exists = false
+		logo.Source = ""
+		logo.Provider = ""
 	}
 
 	return logo, nil

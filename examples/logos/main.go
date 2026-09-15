@@ -1,7 +1,7 @@
 // Example: Look up domain logos with F-Image
 //
-// This example demonstrates how to resolve a domain logo URL without fetching
-// image bytes through your application server.
+// This example demonstrates how to resolve a domain logo URL. F-Image returns
+// a stored logo when present, otherwise it fetches and saves one.
 //
 // Usage:
 //
@@ -31,9 +31,9 @@ func main() {
 
 	client := fimage.NewClient(apiToken)
 
-	logo, err := client.Logos.Get(context.Background(), domain)
+	logo, err := client.Logos.Resolve(context.Background(), domain)
 	if err != nil {
-		log.Fatalf("logo lookup failed: %v", err)
+		log.Fatalf("logo resolve failed: %v", err)
 	}
 
 	fmt.Printf("Domain: %s\n", logo.Domain)
@@ -43,4 +43,10 @@ func main() {
 	}
 
 	fmt.Printf("Logo URL: %s\n", logo.URL)
+	if logo.Source != "" {
+		fmt.Printf("Source: %s\n", logo.Source)
+	}
+	if logo.Provider != "" {
+		fmt.Printf("Provider: %s\n", logo.Provider)
+	}
 }

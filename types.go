@@ -66,6 +66,15 @@ type Logo struct {
 
 	// URL is the public R2 URL for the logo. It is empty when the logo does not exist.
 	URL string `json:"url,omitempty"`
+
+	// Exists is true when a logo is stored for the domain.
+	Exists bool `json:"exists,omitempty"`
+
+	// Source is cache, fetched, or upload when returned by Resolve.
+	Source string `json:"source,omitempty"`
+
+	// Provider is the auto-fetch source when the logo was resolved.
+	Provider string `json:"provider,omitempty"`
 }
 
 // File represents a file in the user's library.

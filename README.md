@@ -113,7 +113,7 @@ client := fimage.NewClient("your-api-token",
 )
 ```
 
-`client.Logos.Get` uses the lightweight internal metadata endpoint and returns the final public R2 URL without proxying image bytes through your application server.
+`client.Logos.Get` uses the lightweight internal metadata endpoint and returns the final public R2 URL without proxying image bytes through your application server. `client.Logos.Resolve` is the platform integration path: give a domain, reuse a stored logo, or let F-Image fetch and save one.
 
 ---
 
@@ -173,9 +173,10 @@ When uploading logos, the SDK sends logo metadata in the request URL so the serv
 
 ### 🏷️ Logos API
 
-Resolve whether a domain logo exists without routing image bytes through your application server. The API only returns metadata and the final public R2 URL.
+Look up a stored domain logo, or let F-Image fetch and save one. Both methods return metadata and the final public R2 URL, not image bytes.
 
 ```go
+// Lightweight existence check. Does not fetch from the web.
 logo, err := client.Logos.Get(ctx, "https://www.marriott.com/path?x=1")
 if err != nil {
     log.Fatal(err)
@@ -189,11 +190,26 @@ if logo.URL == "" {
 }
 
 fmt.Println(logo.URL) // https://i.f-image.com/logos/marriott.com
+
+// Platform path: return the stored logo, or fetch and save it when missing.
+resolved, err := client.Logos.Resolve(ctx, "https://www.stripe.com")
+if err != nil {
+    log.Fatal(err)
+}
+if resolved.URL == "" {
+    fmt.Println("Logo not found")
+    return
+}
+fmt.Println(resolved.URL)      // https://i.f-image.com/logos/stripe.com
+fmt.Println(resolved.Source)   // cache, fetched, or upload
+fmt.Println(resolved.Provider) // hunter, ninjapear, or site when fetched
 ```
 
-`Get` accepts plain domains or URL-like input. The SDK normalizes the input to a domain for lookup, and if the logo does not exist it returns a `Logo` result with an empty `URL` instead of an error.
+`Get` and `Resolve` accept plain domains or URL-like input. The SDK normalizes the input to a domain. If the logo does not exist, both return a `Logo` with an empty `URL` instead of an error.
 
-For the common "create if missing, otherwise reuse" workflow, use `client.Files.UploadLogoOrGetURL(...)`. It checks metadata first and only sends the file upload when the logo is missing or `ForceUpdate` is `true`.
+Use `Resolve` when a consumer only has a domain. Use `Get` when you only want a fast catalog lookup. Manual uploads with `Files.Upload` remain the override path.
+
+For the common "create if missing, otherwise reuse" workflow with a local file, use `client.Files.UploadLogoOrGetURL(...)`. It checks metadata first and only sends the file upload when the logo is missing or `ForceUpdate` is `true`.
 
 #### List Files
 
